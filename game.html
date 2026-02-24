@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AidVenture: Disaster Donation & Response</title>
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(to bottom right, #0a3d62, #1e3799);
+        color: white;
+        text-align: center;
+    }
+
+    .screen {
+        display: none;
+        padding: 40px;
+    }
+
+    .active {
+        display: block;
+    }
+
+    h1 {
+        font-size: 42px;
+    }
+
+    button {
+        padding: 12px 25px;
+        margin: 10px;
+        font-size: 16px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        background-color: #f39c12;
+        color: black;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+
+    button:hover {
+        background-color: #f1c40f;
+        transform: scale(1.05);
+    }
+
+    .stats {
+        margin-top: 20px;
+        font-size: 18px;
+    }
+
+    .disaster-box {
+        background: rgba(255,255,255,0.1);
+        padding: 20px;
+        border-radius: 10px;
+        margin-top: 20px;
+    }
+</style>
+</head>
+<body>
+
+<!-- MENU -->
+<div id="menu" class="screen active">
+    <h1>🌐 AidVenture</h1>
+    <p>A Game-Based ICT Platform for Disaster Donation & Response</p>
+    <button onclick="startGame()">Start Game</button>
+    <button onclick="showHowTo()">How to Play</button>
+</div>
+
+<!-- HOW TO -->
+<div id="howTo" class="screen">
+    <h1>📖 How to Play</h1>
+    <p>
+        You manage disaster response operations.<br><br>
+        💰 Collect Donations<br>
+        🚚 Deploy Relief Goods<br>
+        🏥 Help Affected Communities<br><br>
+        If community health reaches 0 → You Lose<br>
+        Reach 100 Impact Score → You Win!
+    </p>
+    <button onclick="backToMenu()">Back</button>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen">
+    <h1>🚨 Disaster Response Center</h1>
+
+    <div class="stats">
+        💰 Funds: <span id="funds">100</span> |
+        ❤️ Community Health: <span id="health">80</span> |
+        🌟 Impact Score: <span id="score">0</span>
+    </div>
+
+    <div class="disaster-box">
+        <h2 id="disasterTitle">Waiting for disaster event...</h2>
+        <p id="disasterDesc"></p>
+    </div>
+
+    <button onclick="collectDonations()">Collect Donations</button>
+    <button onclick="sendRelief()">Send Relief (Cost: 30)</button>
+    <button onclick="nextEvent()">Next Event</button>
+</div>
+
+<!-- WIN -->
+<div id="win" class="screen">
+    <h1>🏆 You Saved the Nation!</h1>
+    <p>Your disaster response made a massive impact!</p>
+    <button onclick="backToMenu()">Return to Menu</button>
+</div>
+
+<!-- LOSE -->
+<div id="lose" class="screen">
+    <h1>💔 Community Collapsed</h1>
+    <p>Disaster response failed. Try again!</p>
+    <button onclick="backToMenu()">Return to Menu</button>
+</div>
+
+<script>
+let funds = 100;
+let health = 80;
+let score = 0;
+
+const disasters = [
+    {title: "🌪 Typhoon Strike", desc: "Heavy winds destroyed homes!", damage: 15},
+    {title: "🌊 Flash Flood", desc: "Communities submerged in water!", damage: 10},
+    {title: "🔥 Fire Outbreak", desc: "Residential area burned!", damage: 12},
+    {title: "🌋 Volcanic Eruption", desc: "Ashfall affecting thousands!", damage: 18}
+];
+
+function switchScreen(id) {
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+    document.getElementById(id).classList.add('active');
+}
+
+function startGame() {
+    funds = 100;
+    health = 80;
+    score = 0;
+    updateStats();
+    switchScreen("game");
+    nextEvent();
+}
+
+function showHowTo() {
+    switchScreen("howTo");
+}
+
+function backToMenu() {
+    switchScreen("menu");
+}
+
+function updateStats() {
+    document.getElementById("funds").textContent = funds;
+    document.getElementById("health").textContent = health;
+    document.getElementById("score").textContent = score;
+}
+
+function collectDonations() {
+    let donation = Math.floor(Math.random() * 40) + 10;
+    funds += donation;
+    score += 5;
+    playBeep();
+    updateStats();
+}
+
+function sendRelief() {
+    if (funds >= 30) {
+        funds -= 30;
+        health += 15;
+        score += 15;
+        if (health > 100) health = 100;
+        playBeep();
+    } else {
+        alert("Not enough funds!");
+    }
+    updateStats();
+    checkGameStatus();
+}
+
+function nextEvent() {
+    let event = disasters[Math.floor(Math.random() * disasters.length)];
+    document.getElementById("disasterTitle").textContent = event.title;
+    document.getElementById("disasterDesc").textContent = event.desc;
+    health -= event.damage;
+    updateStats();
+    checkGameStatus();
+}
+
+function checkGameStatus() {
+    if (health <= 0) {
+        switchScreen("lose");
+    }
+    if (score >= 100) {
+        switchScreen("win");
+    }
+}
+
+function playBeep() {
+    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let oscillator = audioCtx.createOscillator();
+    oscillator.type = "square";
+    oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+    oscillator.connect(audioCtx.destination);
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.1);
+}
+</script>
+
+</body>
+</html>
