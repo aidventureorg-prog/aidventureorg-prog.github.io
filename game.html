@@ -1,211 +1,247 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>AidVenture: Disaster Donation & Response</title>
+<title>AidVenture Pixel Donation Edition</title>
 <style>
-    body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: linear-gradient(to bottom right, #0a3d62, #1e3799);
-        color: white;
-        text-align: center;
-    }
-
-    .screen {
-        display: none;
-        padding: 40px;
-    }
-
-    .active {
-        display: block;
-    }
-
-    h1 {
-        font-size: 42px;
-    }
-
-    button {
-        padding: 12px 25px;
-        margin: 10px;
-        font-size: 16px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        background-color: #f39c12;
-        color: black;
-        font-weight: bold;
-        transition: 0.3s;
-    }
-
-    button:hover {
-        background-color: #f1c40f;
-        transform: scale(1.05);
-    }
-
-    .stats {
-        margin-top: 20px;
-        font-size: 18px;
-    }
-
-    .disaster-box {
-        background: rgba(255,255,255,0.1);
-        padding: 20px;
-        border-radius: 10px;
-        margin-top: 20px;
-    }
+body{
+    margin:0;
+    overflow:hidden;
+    background:#111;
+    font-family: monospace;
+}
+canvas{
+    display:none;
+    margin:0 auto;
+    background:#000;
+    image-rendering: pixelated;
+}
+.screen{
+    position:absolute;
+    width:100%;
+    height:100%;
+    background:#1a1a1a;
+    color:white;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+}
+button{
+    padding:10px 20px;
+    margin:10px;
+    font-size:16px;
+    cursor:pointer;
+}
+input{
+    padding:8px;
+    font-size:16px;
+    width:120px;
+    text-align:center;
+}
 </style>
 </head>
 <body>
 
 <!-- MENU -->
-<div id="menu" class="screen active">
+<div id="menu" class="screen">
     <h1>🌐 AidVenture</h1>
-    <p>A Game-Based ICT Platform for Disaster Donation & Response</p>
+    <h3>Pixel Disaster Response Platformer</h3>
+    <button onclick="showInstructions()">Instructions</button>
     <button onclick="startGame()">Start Game</button>
-    <button onclick="showHowTo()">How to Play</button>
 </div>
 
-<!-- HOW TO -->
-<div id="howTo" class="screen">
-    <h1>📖 How to Play</h1>
+<!-- INSTRUCTIONS -->
+<div id="instructions" class="screen" style="display:none;">
+    <h2>📖 How To Play</h2>
     <p>
-        You manage disaster response operations.<br><br>
-        💰 Collect Donations<br>
-        🚚 Deploy Relief Goods<br>
-        🏥 Help Affected Communities<br><br>
-        If community health reaches 0 → You Lose<br>
-        Reach 100 Impact Score → You Win!
+    ➡ Arrow Keys = Move<br>
+    ⬆ Space = Jump<br><br>
+    🌪 Avoid disasters<br>
+    🏥 Reach Relief Zone<br>
+    💰 After each level, collect donations<br>
+    ❤️ 3 Health total<br><br>
+    Save all 3 communities to win!
     </p>
     <button onclick="backToMenu()">Back</button>
 </div>
 
-<!-- GAME -->
-<div id="game" class="screen">
-    <h1>🚨 Disaster Response Center</h1>
-
-    <div class="stats">
-        💰 Funds: <span id="funds">100</span> |
-        ❤️ Community Health: <span id="health">80</span> |
-        🌟 Impact Score: <span id="score">0</span>
-    </div>
-
-    <div class="disaster-box">
-        <h2 id="disasterTitle">Waiting for disaster event...</h2>
-        <p id="disasterDesc"></p>
-    </div>
-
-    <button onclick="collectDonations()">Collect Donations</button>
-    <button onclick="sendRelief()">Send Relief (Cost: 30)</button>
-    <button onclick="nextEvent()">Next Event</button>
+<!-- DONATION SCREEN -->
+<div id="donationScreen" class="screen" style="display:none;">
+    <h2>💰 Donation Received!</h2>
+    <p>Enter donation amount to support next mission:</p>
+    <input type="number" id="donationInput" placeholder="Amount">
+    <button onclick="confirmDonation()">Confirm</button>
 </div>
 
-<!-- WIN -->
-<div id="win" class="screen">
-    <h1>🏆 You Saved the Nation!</h1>
-    <p>Your disaster response made a massive impact!</p>
-    <button onclick="backToMenu()">Return to Menu</button>
+<!-- FINAL WIN -->
+<div id="finalWin" class="screen" style="display:none;">
+    <h1>🏆 ALL COMMUNITIES SAVED!</h1>
+    <p>You built transparency and impact through ICT.</p>
+    <button onclick="location.reload()">Play Again</button>
 </div>
 
-<!-- LOSE -->
-<div id="lose" class="screen">
-    <h1>💔 Community Collapsed</h1>
-    <p>Disaster response failed. Try again!</p>
-    <button onclick="backToMenu()">Return to Menu</button>
-</div>
+<canvas id="game" width="960" height="540"></canvas>
 
 <script>
-let funds = 100;
-let health = 80;
-let score = 0;
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+ctx.imageSmoothingEnabled=false;
 
-const disasters = [
-    {title: "🌪 Typhoon Strike", desc: "Heavy winds destroyed homes!", damage: 15},
-    {title: "🌊 Flash Flood", desc: "Communities submerged in water!", damage: 10},
-    {title: "🔥 Fire Outbreak", desc: "Residential area burned!", damage: 12},
-    {title: "🌋 Volcanic Eruption", desc: "Ashfall affecting thousands!", damage: 18}
+let gravity=0.6;
+let levelIndex=0;
+let funds=0;
+
+const levels=[
+{platforms:[{x:0,y:500,w:960,h:40},{x:300,y:400,w:200,h:20}], relief:{x:900,y:450,w:40,h:40}},
+{platforms:[{x:0,y:500,w:960,h:40},{x:200,y:420,w:150,h:20},{x:500,y:350,w:150,h:20}], relief:{x:900,y:300,w:40,h:40}},
+{platforms:[{x:0,y:500,w:960,h:40},{x:150,y:450,w:100,h:20},{x:350,y:400,w:100,h:20},{x:550,y:350,w:100,h:20}], relief:{x:900,y:250,w:40,h:40}}
 ];
 
-function switchScreen(id) {
-    document.querySelectorAll('.screen').forEach(screen => {
-        screen.classList.remove('active');
+let player={
+x:100,y:400,w:32,h:48,
+dx:0,dy:0,
+speed:4,jump:-12,
+grounded:false,
+health:3
+};
+
+let keys={};
+
+document.addEventListener("keydown",e=>keys[e.code]=true);
+document.addEventListener("keyup",e=>keys[e.code]=false);
+
+function jumpSound(){
+    const a=new(window.AudioContext||window.webkitAudioContext)();
+    const o=a.createOscillator();
+    o.type="square";
+    o.frequency.value=600;
+    o.connect(a.destination);
+    o.start();
+    o.stop(a.currentTime+0.1);
+}
+
+function showInstructions(){
+    document.getElementById("menu").style.display="none";
+    document.getElementById("instructions").style.display="flex";
+}
+function backToMenu(){
+    document.getElementById("instructions").style.display="none";
+    document.getElementById("menu").style.display="flex";
+}
+
+function startGame(){
+    document.querySelectorAll(".screen").forEach(s=>s.style.display="none");
+    canvas.style.display="block";
+    gameLoop();
+}
+
+function update(){
+    if(keys["ArrowLeft"]) player.dx=-player.speed;
+    else if(keys["ArrowRight"]) player.dx=player.speed;
+    else player.dx=0;
+
+    if(keys["Space"] && player.grounded){
+        player.dy=player.jump;
+        player.grounded=false;
+        jumpSound();
+    }
+
+    player.dy+=gravity;
+    player.x+=player.dx;
+    player.y+=player.dy;
+
+    player.grounded=false;
+    levels[levelIndex].platforms.forEach(p=>{
+        if(player.x<p.x+p.w &&
+           player.x+player.w>p.x &&
+           player.y+player.h<p.y+10 &&
+           player.y+player.h+player.dy>=p.y){
+            player.y=p.y-player.h;
+            player.dy=0;
+            player.grounded=true;
+        }
     });
-    document.getElementById(id).classList.add('active');
-}
 
-function startGame() {
-    funds = 100;
-    health = 80;
-    score = 0;
-    updateStats();
-    switchScreen("game");
-    nextEvent();
-}
-
-function showHowTo() {
-    switchScreen("howTo");
-}
-
-function backToMenu() {
-    switchScreen("menu");
-}
-
-function updateStats() {
-    document.getElementById("funds").textContent = funds;
-    document.getElementById("health").textContent = health;
-    document.getElementById("score").textContent = score;
-}
-
-function collectDonations() {
-    let donation = Math.floor(Math.random() * 40) + 10;
-    funds += donation;
-    score += 5;
-    playBeep();
-    updateStats();
-}
-
-function sendRelief() {
-    if (funds >= 30) {
-        funds -= 30;
-        health += 15;
-        score += 15;
-        if (health > 100) health = 100;
-        playBeep();
-    } else {
-        alert("Not enough funds!");
+    let r=levels[levelIndex].relief;
+    if(player.x<r.x+r.w &&
+       player.x+player.w>r.x &&
+       player.y<r.y+r.h &&
+       player.y+player.h>r.y){
+        levelComplete();
     }
-    updateStats();
-    checkGameStatus();
-}
 
-function nextEvent() {
-    let event = disasters[Math.floor(Math.random() * disasters.length)];
-    document.getElementById("disasterTitle").textContent = event.title;
-    document.getElementById("disasterDesc").textContent = event.desc;
-    health -= event.damage;
-    updateStats();
-    checkGameStatus();
-}
-
-function checkGameStatus() {
-    if (health <= 0) {
-        switchScreen("lose");
-    }
-    if (score >= 100) {
-        switchScreen("win");
+    if(player.y>canvas.height){
+        player.health--;
+        player.x=100;
+        player.y=400;
+        if(player.health<=0){
+            alert("Game Over");
+            location.reload();
+        }
     }
 }
 
-function playBeep() {
-    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    let oscillator = audioCtx.createOscillator();
-    oscillator.type = "square";
-    oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
-    oscillator.connect(audioCtx.destination);
-    oscillator.start();
-    oscillator.stop(audioCtx.currentTime + 0.1);
+function levelComplete(){
+    canvas.style.display="none";
+    document.getElementById("donationScreen").style.display="flex";
+}
+
+function confirmDonation(){
+    let amount=parseInt(document.getElementById("donationInput").value);
+    if(!amount||amount<=0) amount=10;
+    funds+=amount;
+    document.getElementById("donationScreen").style.display="none";
+    levelIndex++;
+    if(levelIndex>=levels.length){
+        document.getElementById("finalWin").style.display="flex";
+    }else{
+        player.x=100;
+        player.y=400;
+        canvas.style.display="block";
+    }
+}
+
+function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    for(let i=0;i<canvas.width;i+=16){
+        for(let j=0;j<canvas.height;j+=16){
+            ctx.fillStyle=((i+j)/16%2==0)?"#5c94fc":"#6aa5ff";
+            ctx.fillRect(i,j,16,16);
+        }
+    }
+
+    levels[levelIndex].platforms.forEach(p=>{
+        for(let i=p.x;i<p.x+p.w;i+=8){
+            for(let j=p.y;j<p.y+p.h;j+=8){
+                ctx.fillStyle=((i+j)/8%2==0)?"#3a7d3a":"#2e6b2e";
+                ctx.fillRect(i,j,8,8);
+            }
+        }
+    });
+
+    let r=levels[levelIndex].relief;
+    ctx.fillStyle="#0033cc";
+    ctx.fillRect(r.x,r.y,r.w,r.h);
+
+    ctx.fillStyle="#ff0000";
+    ctx.fillRect(player.x,player.y,player.w,player.h);
+
+    ctx.fillStyle="#000";
+    ctx.fillRect(0,0,220,40);
+    ctx.fillStyle="#fff";
+    ctx.fillText("Health: "+player.health,10,25);
+    ctx.fillText("Funds: "+funds,100,25);
+    ctx.fillText("Level: "+(levelIndex+1),10,40);
+}
+
+function gameLoop(){
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
 }
 </script>
-
 </body>
 </html>
